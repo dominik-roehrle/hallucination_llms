@@ -1,0 +1,11 @@
+*.csv
+*.pkl
+llama2/
+api.key
+*.db
+*.jsonl
+__pycache__/
+*.pth
+*.png
+*.pdf
+*.key
