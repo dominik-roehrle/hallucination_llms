@@ -52,7 +52,7 @@ class DatasetBuilder:
         df_sentence = pd.read_pickle(self.sentence_file)
         df_sentence = pd.merge(df_sentence, df_gen_evidence, on="gen_evidence", how="left").iloc[:10]
         df_sentence.rename(columns={"docs_x": "docs"}, inplace=True)
-        df_sentence.rename(columns={"token_details": "concat_probs"}, inplace=True)
+        #df_sentence.rename(columns={"token_details": "concat_probs"}, inplace=True)
         print(df_sentence['gen_evidence'].isna().sum())
         return df_sentence
     
@@ -185,32 +185,6 @@ class DatasetBuilder:
         df_token_importance.reset_index(drop=True, inplace=True)
         return df_token_importance
     
-    
-    """
-    def get_token_importance(self, df_probs_sentences):
-        df_token_importance = df_probs_sentences.copy()
-        df_token_importance['token_importance'] = None
-        df_token_importance['token_importance'] = df_token_importance['token_importance'].astype(object)
-
-        for sample_idx, row in df_probs_sentences.iterrows():
-            generated_text = row['output_sentence']
-            concat_probs_sentence = row['concat_probs_sentence']
-            tokens = [tokens[1] for tokens in concat_probs_sentence]
-            tokens = [item for sublist in tokens for item in sublist]
-            token_importance = []
-            for token in tokens:
-                similarity_to_original = self.nlp_processor.roberta_measure_model.predict([generated_text,
-                                                                generated_text.replace(
-                                                                    token,
-                                                                    '')])
-                token_importance.append(1 - torch.tensor(similarity_to_original))
-
-            token_importance = torch.tensor(token_importance).reshape(-1)
-            df_token_importance.at[sample_idx, 'token_importance'] = token_importance.tolist()
-        df_token_importance.reset_index(drop=True, inplace=True)
-        return df_token_importance
-    """
-
 class NLP:
     def __init__(self, roberta_model_path, roberta_measure_model):
         self.nlp = spacy.load("en_core_web_sm")
@@ -246,7 +220,7 @@ if __name__ == "__main__":
     
     df_sentence = dataset_builder.merge_with_probs()
     df_probs_sentences = dataset_builder.create_probs(df_sentence)
-    #df_probs_sentences.to_pickle(f"new_probs/df_new_{dataset}_probs_sentence.pkl")
+    
     #if not os.path.exists(f"datasets_{dataset}"):
     #    os.makedirs(f"datasets_{dataset}")
     #df_probs_sentences.to_pickle(f"probs_test_{model_name}/probs_sentence_{dataset}.pkl")

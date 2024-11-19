@@ -13,11 +13,11 @@ import argparse
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, accuracy_score
-from itertools import product  # For hyperparameter combinations
+from itertools import product  
 
 import random
 
-# Set the seed for reproducibility
+
 def set_seed(seed_value=42):
     torch.manual_seed(seed_value)
     torch.cuda.manual_seed_all(seed_value)
@@ -25,7 +25,6 @@ def set_seed(seed_value=42):
     random.seed(seed_value)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
 
 
 class ProbeNN(nn.Module):
@@ -50,21 +49,11 @@ class TrainProbe:
 
         
         self.df_train = pd.read_pickle(f"{dataset_names[0]}.pkl")
-        #df2 = pd.read_pickle(f"mini_fact_hover_train_low_popularity_with_embeddings.pkl").iloc[:4000]
-        #self.df_train = pd.concat([df1, df2], ignore_index=True)
-        #self.df_train = self.df_train[self.df_train['popularity_bin'] == 'Medium']
         self.train_embeddings = torch.tensor(self.df_train[f'embeddings{layer}_{probe_method}'].tolist(), dtype=torch.float32).to(self.device)
-        #print(self.train_embeddings.shape)
-        #self.train_embeddings = torch.squeeze(self.train_embeddings, 1)  # Removes extra dimension along axis 1
-        #print(self.train_embeddings.shape)
-        #import sys
-        #sys.exit()
         self.train_labels = torch.tensor(self.df_train[f'label_{probe_method}'].values, dtype=torch.float32).to(self.device)
 
         self.df_dev = pd.read_pickle(f"{dataset_names[1]}.pkl")
-        #self.df_dev = self.df_dev[(self.df_dev['popularity'] > 5000) & (self.df_dev['popularity'] < 80000)]
         self.dev_embeddings = torch.tensor(self.df_dev[f'embeddings{layer}_{probe_method}'].tolist(), dtype=torch.float32).to(self.device)
-        #self.dev_embeddings = torch.squeeze(self.dev_embeddings, 1)  # Removes extra dimension along axis 1
         self.dev_labels = torch.tensor(self.df_dev[f'label_{probe_method}'].values, dtype=torch.float32).to(self.device)
 
         self.learning_rate = hyperparameters["learning_rate"]
@@ -73,7 +62,6 @@ class TrainProbe:
         self.patience = hyperparameters["patience"]
         self.accuracy_threshold = hyperparameters["accuracy_threshold"]
 
-        
         self.dataset = TensorDataset(self.train_embeddings, self.train_labels)
         self.dataloader = DataLoader(self.dataset, batch_size=self.batch_size, shuffle=True)
 
@@ -89,29 +77,24 @@ class TrainProbe:
         dev_losses = []
         early_stopping_triggered = False
 
-        # Initialize early stopping variables
-        best_dev_loss = float('inf')  # Track the lowest dev loss
+        best_dev_loss = float('inf')
         epochs_no_improve = 0
-        best_epoch = 0  # Track the epoch of the best model
+        best_epoch = 0  
 
-        # Store the best model during training
         best_model_state = None
         for epoch in range(self.epochs):
             self.model.train()
             epoch_loss = 0.0
             for batch_embeddings, batch_labels in self.dataloader:
                 self.optimizer.zero_grad()
-                #print(batch_embeddings.shape)
                 outputs = self.model(batch_embeddings).squeeze()
                 loss = self.criterion(outputs, batch_labels)
                 loss.backward()
                 self.optimizer.step()
                 epoch_loss += loss.item()
 
-            # Average training loss for the epoch
             avg_train_loss = epoch_loss / len(self.dataloader)
             train_losses.append(avg_train_loss)
-            # Evaluate on the dev set
             self.model.eval()
             with torch.no_grad():
                 dev_outputs = self.model(self.dev_embeddings).squeeze()
@@ -120,10 +103,9 @@ class TrainProbe:
 
             print(f"Epoch {epoch+1}/{self.epochs}, Train Loss: {avg_train_loss:.4f}, dev Loss: {dev_loss:.4f}")
 
-            # Check for early stopping based on dev loss
             if dev_loss < best_dev_loss:
                 best_dev_loss = dev_loss
-                best_epoch = epoch + 1  # Save the best epoch (1-indexed)
+                best_epoch = epoch + 1  
                 epochs_no_improve = 0
                 best_model_state = deepcopy(self.model.state_dict())
             else:
@@ -133,7 +115,7 @@ class TrainProbe:
                 print(f"Early stopping triggered after {epoch+1} epochs. Best dev loss was at epoch: {best_epoch}")
                 early_stopping_triggered = True
                 break
-        # Load best model state before returning
+
         if best_model_state is not None:
             self.model.load_state_dict(best_model_state)
         return self.model, train_losses, dev_losses, best_dev_loss, best_epoch, early_stopping_triggered
@@ -151,7 +133,6 @@ class TrainProbe:
             accuracy = (predicted == self.dev_labels).float().mean().item()
             loss = nn.BCELoss()(outputs, self.dev_labels).item()
 
-            # Get predicted probabilities for AUC-ROC
             predicted_probabilities = outputs.cpu().numpy()
             roc_auc = self.compute_roc_curve(self.dev_labels.cpu().numpy(), predicted_probabilities)
 
