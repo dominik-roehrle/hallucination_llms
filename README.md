@@ -5,7 +5,7 @@ Mitigation Techniques for Claim-Based Verification
 To downlaod LLMs create an account on https://huggingface.co/
 Maybe the access to Llama has to be requested first: https://huggingface.co/meta-llama and https://llama.meta.com/llama-downloads
 
-To install pytorch run: pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+To install pytorch go to https://pytorch.org/
 then install the other packages with: pip install -r requirements.txt
 
 
@@ -34,7 +34,9 @@ The repository is divided into three parts:
 - go to model_test.ipynb to run the evaluation
 
 ## To run the results from the existing probes ...
-- download the dataset with embeddings (8 GB): https://1drv.ms/u/s!AhVn8Lx_iIapipkfm8s7rjAHUdhQLQ?e=nX4arh (make sure the folders inside the zip are insides Probes/)
+- download the dataset with embeddings (8 GB): https://1drv.ms/u/s!AhVn8Lx_iIapipkfm8s7rjAHUdhQLQ?e=nX4arh 
+(make sure the folders inside the zip are insides Probes/, the embeddings are indexed from the last hidden layer: -1, -8, -16, -24 and the first layer (1), this corresponds with 32, 25, 17, 9 and 1)
+
 - download the probes (.pth files): https://1drv.ms/f/s!AhVn8Lx_iIapipkgKEms9E6yilRC5A?e=rwuBT8 (make sure the folder is inside Probes/)
 - go to model_test.ipynb to run the evaluation
 
@@ -64,8 +66,8 @@ The repository is divided into three parts:
 - python evaluate.py 
 (evaluation of LLMs and the finetuned LLM with BART-Large-MNLI)
 
-## to get the already finetuned LLM
-- download https://1drv.ms/u/s!AhVn8Lx_iIapipk4_lTNSo2OeAWcRA?e=escUoS 
+## to get the already finetuned LLM (make sure to change the path to your base model in adapter_config.json)
+- download https://1drv.ms/u/s!AhVn8Lx_iIapiplTSTcnfV0ZfQz2-g?e=9fUSoi 
 
 ## to get the already created datasets for finetuning
 - download https://1drv.ms/u/s!AhVn8Lx_iIapipk9fqq85l-4SFZepg?e=5fA4mM (make sure every folder of the zip is inside Mitigation/)
@@ -82,7 +84,7 @@ The repository is divided into three parts:
 
 # Entity Analysis
 ## to recreate the real train samples
-- go to gen_real_docs.ipnyb
+- go to gen_real_samples.ipnyb
 
 
 ## to run the evaluation of the probes on the test datasets go to Entity Analysis/
@@ -93,6 +95,14 @@ The repository is divided into three parts:
 
 ## to get the aleady created dataset
 - download https://1drv.ms/u/s!AhVn8Lx_iIapiplROt5adNLKBiQ-xw?e=a6TfhQ 
+
+
+
+Note: Some coding was conducted with the help of Github Copilot, 
+inspirings ...
+... for finetuning was taken from https://www.kaggle.com/code/zivicmilos/llm-finetuning,
+... for token sar from https://github.com/jinhaoduan/SAR 
+... for the probes from https://github.com/balevinstein/Probes
 
 
 

@@ -1,10 +1,11 @@
 import pandas as pd
-from llm import LLM  # Assuming the previous LLM class is saved in a file named 'llm.py'
+from llm import LLM  
 import sqlite3
 import unicodedata2
 import os
 
 class HoverEvidenceGenerator:
+    """ this class generates evidence for the Hover dataset"""
     def __init__(self, llm, db_path, hover_files, number_few_shot, max_number_claim_evidence, model_name, only_test_claims=False):
         self.llm = llm
         self.db_path = db_path
@@ -27,6 +28,7 @@ class HoverEvidenceGenerator:
         self.prompt_df = pd.DataFrame(columns=['claim', 'claim_label', 'evidence', 'hops'])
 
     def query_wiki(self, doc_title):
+        """ queries the wiki database for the docs"""
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         para = (
@@ -36,6 +38,7 @@ class HoverEvidenceGenerator:
         return para
     
     def generate_prompt_option(self, supports_option, hops_option, old_hops, old_supports):
+        """ generates the prompt options """
         if supports_option == "SUPPORTS+REFUTES":
             if old_supports == "SUPPORTS":
                 new_supports = "REFUTES"
@@ -55,6 +58,7 @@ class HoverEvidenceGenerator:
         return new_supports, new_hops
     
     def select_row_from_prompt_df(self, supports, hops, ending):
+        """ selects the row from the prompt dataframe"""
         df_name = f"hops_{hops}_{supports.lower()}_{ending}"
         df = getattr(self, df_name)
         selected_row = df.iloc[0:1]
@@ -65,6 +69,7 @@ class HoverEvidenceGenerator:
         return selected_row
     
     def get_prompt(self, supports_option, hops_option):
+        """ generates the prompt"""
         if supports_option == "SUPPORTS+REFUTES":
             old_supports = "REFUTES"
         else:
@@ -89,9 +94,12 @@ class HoverEvidenceGenerator:
 
 
     def get_evidence(self, supports_option, hops_option, hops_data, used_docs, df_generated_evidence):
+        """ generates the evidence of the claims"""
         prompt = self.get_prompt(supports_option=supports_option, hops_option=hops_option)
         for index, row in hops_data.iterrows():
             print(index)
+
+            # Skip if the document has already been used
             if self.only_test_claims:
                 pass
             else:
@@ -109,6 +117,7 @@ class HoverEvidenceGenerator:
                         continue
                 else:
                     used_docs.extend(docs) 
+
             new_prompt = prompt + " CLAIM: " + row["claim"]
             output, token_details = self.llm.call_text_llm(new_prompt)
             output = output.replace("EVIDENCE: ", "").replace("EVIDENCE_END.", "").replace("EVIDENCE_END .", "").replace("###", "").strip()
@@ -130,6 +139,9 @@ class HoverEvidenceGenerator:
         return df_generated_evidence, used_docs
     
     def run_hover_hops_2(self):
+        """ generates evidence for the Hover dataset with 2 hops"""
+
+        # if only testing claims and not all claims
         if self.only_test_claims:
             raw_data = pd.read_pickle(self.claim_evidence1_file)
             hops2 = raw_data[raw_data['docs'].apply(len) == 2].reset_index(drop=True)
@@ -147,13 +159,11 @@ class HoverEvidenceGenerator:
             used_docs = []
             df_generated_evidence, used_docs = self.get_evidence(supports_option="SUPPORTS+REFUTES", hops_option=2, hops_data=hops2_1, used_docs=used_docs, df_generated_evidence=df_generated_evidence)
             
-            #used_docs = hops2_1['supporting_facts'].tolist()
-            #used_docs = [item[0] for sublist in used_docs for item in sublist]
-            #used_docs = list(set(used_docs))
             df_generated_evidence, used_docs = self.get_evidence(supports_option="SUPPORTS+REFUTES", hops_option=2, hops_data=hops2_2, used_docs=used_docs, df_generated_evidence=df_generated_evidence)
         return df_generated_evidence
     
     def run_hover_hops_3(self):
+        """ generates evidence for the Hover dataset with 3 hops"""
 
         if self.only_test_claims:
             raw_data = pd.read_pickle(self.claim_evidence1_file)
@@ -171,16 +181,14 @@ class HoverEvidenceGenerator:
             df_generated_evidence = pd.DataFrame()
             used_docs = []
             df_generated_evidence, used_docs = self.get_evidence(supports_option="SUPPORTS+REFUTES", hops_option=3, hops_data=hops3_1, used_docs=used_docs, df_generated_evidence=df_generated_evidence)
-            
-            #used_docs = hops3_1['supporting_facts'].tolist()
-            #used_docs = [item[0] for sublist in used_docs for item in sublist]
-            #used_docs = list(set(used_docs))
+
             df_generated_evidence, used_docs = self.get_evidence(supports_option="SUPPORTS+REFUTES", hops_option=3, hops_data=hops3_2, used_docs=used_docs, df_generated_evidence=df_generated_evidence)
             df_generated_evidence.reset_index(drop=True, inplace=True)
         return df_generated_evidence
 
 
 class FeverEvidenceGenerator:
+    """ this class generates evidence for the Fever dataset"""
     def __init__(self, llm, fever_files, number_few_shot, number_claim_evidence, model_name, only_test_claims):
         self.llm = llm
         self.few_shot_file = fever_files['few_shot']
@@ -191,6 +199,7 @@ class FeverEvidenceGenerator:
         self.only_test_claims = only_test_claims
 
     def get_fever_samples(self):
+        """ gets the fever samples for the few shot"""
         df_few_shot = pd.read_json(self.few_shot_file, lines=True)
         df_few_shot.drop_duplicates(subset=["claim"], inplace=True)
         df_few_shot = df_few_shot.iloc[:self.number_few_shot]
@@ -204,6 +213,7 @@ class FeverEvidenceGenerator:
         return df_few_shot, df_claim_evidence
 
     def generate_few_shot(self, df_few_shot):
+        """ generates the few shot prompt"""
         prompt = ""
         for index, row in df_few_shot.iterrows():
             claim = row["claim"]
@@ -216,6 +226,7 @@ class FeverEvidenceGenerator:
         return prompt.strip()
 
     def get_evidence(self, df_few_shot, df_claim_evidence):
+        """ generates the evidence for the claims"""
         df_gen_evidence = pd.DataFrame(columns=["gen_evidence", "docs", "ground_truth_source", "token_details"])
         prompt = self.generate_few_shot(df_few_shot)
         for index, row in df_claim_evidence.iterrows():
@@ -233,6 +244,7 @@ class FeverEvidenceGenerator:
         return df_gen_evidence
     
     def run_fever(self):
+        """ generates the evidence for the Fever dataset"""
         df_few_shot, df_claim_evidence = self.get_fever_samples()
         df_generated_evidence = self.get_evidence(df_few_shot, df_claim_evidence)
         df_generated_evidence.reset_index(drop=True, inplace=True)
@@ -242,12 +254,12 @@ class FeverEvidenceGenerator:
 
 if __name__ == "__main__":
     
-    #model_path = "C:/Users/droeh/.cache/huggingface/hub/models--meta-llama--Meta-Llama-3-8B-Instruct/snapshots/e5e23bbe8e749ef0efcf16cad411a7d23bd23298"
-    model_path = r"D:\huggingface\huggingface\hub\models--microsoft--Phi-3.5-mini-instruct\snapshots\af0dfb8029e8a74545d0736d30cb6b58d2f0f3f0"
+    # insert the model path and name
+    model_path = ""
     model_name = "phi"
 
     llm = LLM(model_path, model_name=model_name)
-    """
+
     fever_files = {
         "few_shot": "datasets_fever/fever_claim_evidence_few_shot.jsonl",
         "claim_evidence": "test_evidence_with_claims/test_fever.pkl"
@@ -258,10 +270,11 @@ if __name__ == "__main__":
     #if not os.path.exists("recreate_datasets_fever"):
     #    os.makedirs("recreate_datasets_fever")
     #df_generated_evidence.to_pickle("recreate_datasets_fever/gen_evidence_fever.pkl")
+
+
+    # if only test claims are used
     """
-    
-    
-    db_path = 'datasets_hover/wiki_wo_links.db'
+    db_path = 'datasets_llama_hover/wiki_wo_links.db'
     hover_files = {
         'few_shot': 'datasets_hover/hover_claim_evidence_few_shot.json',
         'claim_evidence1_file': 'test_evidence_with_claims/test_hover.pkl',
@@ -269,12 +282,20 @@ if __name__ == "__main__":
         #'claim_evidence1_file': 'datasets_hover/hover_claim_evidence_generate1.json',
         #'claim_evidence2_file': 'datasets_hover/hover_claim_evidence_generate2.json'
     }
+    """
 
-    # Initialize the HoverEvidenceGenerator
-    hover_generator = HoverEvidenceGenerator(llm, db_path, hover_files, number_few_shot=4, max_number_claim_evidence=1, model_name=model_name, only_test_claims=True)
+    db_path = 'datasets_llama_hover/wiki_wo_links.db'
+    hover_files = {
+        'few_shot': 'datasets_hover/hover_claim_evidence_few_shot.json',
+        'claim_evidence1_file': 'datasets_hover/hover_claim_evidence_generate1.json',
+        'claim_evidence2_file': 'datasets_hover/hover_claim_evidence_generate2.json'
+    }
+
+
+    hover_generator = HoverEvidenceGenerator(llm, db_path, hover_files, number_few_shot=4, max_number_claim_evidence=1, model_name=model_name, only_test_claims=False)
     df_generated_evidence_hops2 = hover_generator.run_hover_hops_2()
 
-    hover_generator = HoverEvidenceGenerator(llm, db_path, hover_files, number_few_shot=4, max_number_claim_evidence=1, model_name=model_name, only_test_claims=True)
+    hover_generator = HoverEvidenceGenerator(llm, db_path, hover_files, number_few_shot=4, max_number_claim_evidence=1, model_name=model_name, only_test_claims=False)
     df_generated_evidence_hops3 = hover_generator.run_hover_hops_3()
     #if not os.path.exists("recreate_datasets_hover"):
     #    os.makedirs("recreate_datasets_hover")

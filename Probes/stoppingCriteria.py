@@ -2,6 +2,7 @@ import transformers
 import torch 
 
 class TokenStoppingCriteria(transformers.StoppingCriteria):
+    """Stopping criteria that stops generation when a certain number of ### tokens are generated"""
     def __init__(self, sentinel_token_ids: torch.Tensor, 
                  starting_idx: int, counter: int, stop_counter: int):
         super().__init__()

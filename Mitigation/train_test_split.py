@@ -5,6 +5,7 @@ import numpy as np
 import os
 
 def read_and_preprocess_dataset(df):
+    """ Read and preprocess the dataset """
     print(f"Total samples: {len(df)}")
     df.drop_duplicates(subset=["gen_evidence"], inplace=True, ignore_index=True)
     df.dropna(subset=["ground_truth_source"], inplace=True)
@@ -15,36 +16,29 @@ def read_and_preprocess_dataset(df):
     return df
 
 def split_dataset(df, train_ratio=0.85, dev_ratio=0.05, test_ratio=0.1):
-    # Initialize data structures
+    """ Split the dataset into train, dev, and test so that no doc occurs in multiple datasets """
     doc_to_dataset = {}
     train_samples = []
     dev_samples = []
     test_samples = []
-    # Collect documents per dataset
     train_docs = set()
     dev_docs = set()
     test_docs = set()
-    # Calculate the target number of samples for each dataset
     total_samples = len(df)
     train_target_count = total_samples * train_ratio
     dev_target_count = total_samples * dev_ratio
     test_target_count = total_samples * test_ratio
-    # Counters to keep track of the number of samples in each dataset
     train_sample_count = 0
     dev_sample_count = 0
     test_sample_count = 0
-    # Shuffle the DataFrame to ensure random distribution
     df_shuffled = df.sample(frac=1, random_state=42).reset_index(drop=True)
-    # Iterate over the samples
     for index, row in df_shuffled.iterrows():
         document_ids = row['docs']
         assigned_datasets = set()
-        # Check which datasets the documents are already assigned to
         for doc_id in document_ids:
             if doc_id in doc_to_dataset:
                 assigned_datasets.add(doc_to_dataset[doc_id])
         if not assigned_datasets:
-            # None of the docs are assigned; decide which dataset to assign to
             available_datasets = []
             if train_sample_count < train_target_count:
                 available_datasets.append('train')
@@ -53,9 +47,7 @@ def split_dataset(df, train_ratio=0.85, dev_ratio=0.05, test_ratio=0.1):
             if test_sample_count < test_target_count:
                 available_datasets.append('test')
             if not available_datasets:
-                # All datasets are full; skip the sample
                 continue
-            # Randomly choose a dataset from available datasets
             assigned_dataset = rng.choice(available_datasets)
         elif len(assigned_datasets) == 1:
             assigned_dataset = assigned_datasets.pop()
@@ -77,23 +69,19 @@ def split_dataset(df, train_ratio=0.85, dev_ratio=0.05, test_ratio=0.1):
             test_samples.append(row)
             test_sample_count += 1
             test_docs.update(document_ids)
-        # Update doc_to_dataset for the docs in this sample
         for doc_id in document_ids:
             doc_to_dataset[doc_id] = assigned_dataset
-    # Convert the lists of samples into DataFrames
     train_df = pd.DataFrame(train_samples)
     dev_df = pd.DataFrame(dev_samples)
     test_df = pd.DataFrame(test_samples)
-    # Find documents that appear in multiple datasets
     conflicting_docs = (train_docs & dev_docs) | (train_docs & test_docs) | (dev_docs & test_docs)
     print(f"Documents in multiple datasets: {len(conflicting_docs)}")
     return train_df, dev_df, test_df, conflicting_docs
 
 def remove_conflicting_samples(df, conflicting_docs):
-    # Filter out samples that contain conflicting docs
+    """ Remove samples if there are still conflicting docs left"""
     def has_conflicting_docs(docs):
         return any(doc in conflicting_docs for doc in docs)
-    # Remove samples with conflicting docs
     df_cleaned = df[~df['docs'].apply(has_conflicting_docs)]
     return df_cleaned
 
@@ -118,12 +106,10 @@ if __name__ == "__main__":
 
     train_df, dev_df, test_df, conflicting_docs = split_dataset(df_corrections, train_ratio=train_ratio, dev_ratio=dev_ratio, test_ratio=test_ratio)
 
-    # Remove conflicting samples from each set
     train_df_cleaned = remove_conflicting_samples(train_df, conflicting_docs)
     dev_df_cleaned = remove_conflicting_samples(dev_df, conflicting_docs)
     test_df_cleaned = remove_conflicting_samples(test_df, conflicting_docs)
 
-    # Save the datasets to CSV
     train_df_cleaned.reset_index(drop=True, inplace=True)
     dev_df_cleaned.reset_index(drop=True, inplace=True)
     test_df_cleaned.reset_index(drop=True, inplace=True)

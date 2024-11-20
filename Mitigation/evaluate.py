@@ -1,12 +1,15 @@
 from create_train_dataset import DatasetBuilder, NLPProcessor
 import pandas as pd
 
+""" this file evaluates the LLMs to get the correction rates"""
 
 if __name__ == "__main__":
-    bart_model_path = "D:\huggingface\huggingface\hub\models--facebook--bart-large-mnli\snapshots\d7645e127eaf1aefc7862fd59a17a5aa8558b8ce"
+
+    # insert the path to the BART model
+    bart_model_path = ""
     datasets = ["fever"]
     nlp_processor = NLPProcessor(bart_model_path)
-    llm_names = ["llama_finetuned"]#["llama_70B", "llama_finetuned", "openai", "llama"]
+    llm_names = ["llama_70B", "llama_finetuned", "openai", "llama"]
     df_results = pd.DataFrame(columns=["Dataset", "LLM", 
                                         "Facts",
                                        "Removed Facts", 

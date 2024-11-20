@@ -14,11 +14,14 @@ from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, accuracy_score
 from itertools import product  
-
 import random
+
+# inspirings from https://github.com/balevinstein/Probes
+
 
 
 def set_seed(seed_value=42):
+    """Set seed for reproducibility"""
     torch.manual_seed(seed_value)
     torch.cuda.manual_seed_all(seed_value)
     np.random.seed(seed_value)
@@ -28,6 +31,7 @@ def set_seed(seed_value=42):
 
 
 class ProbeNN(nn.Module):
+    """ Neural Network to train probes for the embeddings of the different layers """
     def __init__(self, input_dim):
         super(ProbeNN, self).__init__()
         self.layer1 = nn.Linear(input_dim, 256)
@@ -44,6 +48,7 @@ class ProbeNN(nn.Module):
     
 
 class TrainProbe:
+    """ Class to train the probes for the embeddings of the different layers """
     def __init__(self, dataset_names, layer, probe_method, hyperparameters):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -66,10 +71,8 @@ class TrainProbe:
         self.dataloader = DataLoader(self.dataset, batch_size=self.batch_size, shuffle=True)
 
         
-        
-        
-
     def train_model(self):
+        """ Train the probe model """
         self.criterion = nn.BCELoss()
         self.model = ProbeNN(self.train_embeddings.shape[1]).to(self.device)
         self.optimizer = optim.SGD(self.model.parameters(), lr=self.learning_rate)
@@ -121,21 +124,21 @@ class TrainProbe:
         return self.model, train_losses, dev_losses, best_dev_loss, best_epoch, early_stopping_triggered
     
     def compute_roc_curve(self, dev_labels, dev_pred_prob):
+        """ Compute AUROC """
         fpr, tpr, _ = roc_curve(dev_labels, dev_pred_prob)
         roc_auc = auc(fpr, tpr)
         return roc_auc
     
     def evaluate_model(self, best_model):
+        """ Evaluate the model on the dev set """
         best_model.eval()
         with torch.no_grad():
             outputs = best_model(self.dev_embeddings).squeeze()
             predicted = (outputs > self.accuracy_threshold).float()
             accuracy = (predicted == self.dev_labels).float().mean().item()
             loss = nn.BCELoss()(outputs, self.dev_labels).item()
-
             predicted_probabilities = outputs.cpu().numpy()
             roc_auc = self.compute_roc_curve(self.dev_labels.cpu().numpy(), predicted_probabilities)
-
         return loss, accuracy, roc_auc
 
 
@@ -193,12 +196,11 @@ if __name__ == "__main__":
                         model, train_losses, dev_losses, best_dev_loss, \
                             best_epoch, early_stopping_triggered = probe.train_model()
 
-                        # Update global best model based on dev loss
                         if best_dev_loss < global_best_dev_loss:
                             global_best_dev_loss = best_dev_loss
                             global_best_model = deepcopy(model)
                             global_best_hyperparams = (batch_size, learning_rate)
-                            global_best_epoch = best_epoch  # Save the best epoch
+                            global_best_epoch = best_epoch
                             print(f"New global best dev loss: {global_best_dev_loss}")
                         
                 if global_best_model is not None:
@@ -207,7 +209,6 @@ if __name__ == "__main__":
                     print(f"Best hyperparameters - Batch Size: {global_best_hyperparams[0]}, Learning Rate: {global_best_hyperparams[1]}")
                     print(f"Number of epochs for best model: {global_best_epoch}")
 
-                    # Append the best hyperparameters and results to the DataFrame
                     df_hyperparameters = pd.concat([
                         df_hyperparameters if not df_hyperparameters.empty else None,
                         pd.DataFrame([{
@@ -225,7 +226,6 @@ if __name__ == "__main__":
                         }])
                     ], ignore_index=True)
 
-                    # Save the global best model only once per layer and dataset
                     if save_probes:
                         try:
                             if not os.path.exists(model_output_path):

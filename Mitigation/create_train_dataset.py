@@ -5,9 +5,11 @@ import re
 import os
 import ast
 
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class NLPProcessor:
+    """ Class to process the NLP tasks using BART model."""
     def __init__(self, bart_model_path):
         print("Loading BART model...")
         self.bart_model = AutoModelForSequenceClassification.from_pretrained(bart_model_path, local_files_only=True)
@@ -32,6 +34,7 @@ class NLPProcessor:
         return text_chunks
     
     def call_bart_model(self, source, statement):
+        """Calls the BART model to predict the label."""
         source_chunks = self.split_source_to_fit_with_hypothesis(source, statement, self.bart_tokenizer, max_length=1024)
         entailment_probs = []
         pred_labels = []
@@ -66,12 +69,14 @@ class NLPProcessor:
     
 
 class DatasetBuilder:
+    """Class to build the training dataset for the LLM model."""
     def __init__(self, dataset_name, nlp_processor, llm_name):
         self.dataset_name = dataset_name
         self.nlp_processor = nlp_processor
         self.llm_name = llm_name
 
     def remove_trailing_brackets(self, text):
+        """ Removes the trailing brackets from the corrected mini-fact."""
         match = re.search(r'\s*\([^)]*\)\s*$', text)
         if match:
             removed_brackets = match.group()  
@@ -82,6 +87,7 @@ class DatasetBuilder:
         return cleaned_text, removed_brackets
 
     def split_mini_facts(self, df_corrections_with_evidence):
+        """Split the evidence into a df with mini-facts"""
         df_mini_facts_correction = pd.DataFrame()
         for index, row in df_corrections_with_evidence.iterrows():
             correction_facts = row[f'correction_evidence_{self.llm_name}'].split("\n")
@@ -90,8 +96,6 @@ class DatasetBuilder:
 
             correction_facts = list(dict.fromkeys(correction_facts))
             correction_facts = [fact for fact in correction_facts if "(REMOVE)" in fact or "(Corrected)" in fact]
-            #while len(mini_facts_with_labels_false) < len(correction_facts):
-            #    mini_facts_with_labels_false.append("")
             while len(correction_facts) < len(mini_facts_with_labels_false):
                 correction_facts.append("")
 
@@ -106,23 +110,11 @@ class DatasetBuilder:
         return df_mini_facts_correction
     
     def build_or_evaluate_dataset(self, df_corrections_with_evidence, df_mini_facts_correction, build_dataset):
-
-        #counter_misleading_generation_false = 0
-        #counter_misleading_generation_true = 0
-
-        #counter_removed_false = 0
+        """Builds or evaluates the dataset. Corrected is when BART model predicts Entailment, and Remove is when BART model predicts anything other than Entailment."""
         counter_removed = 0
         counter_removed_true = 0
-
-        #counter_corrected_false = 0
         counter_corrected = 0
         counter_corrected_true = 0
-
-        #counter_corrections_possible = 0
-        #counter_corrected = 0
-        #counter_entailment_removed = 0
-        #counter_entailment_corrected = 0
-
         for index, row in df_mini_facts_correction.iterrows():
             if index % 100 == 0:
                 print(f"Processed {index} samples")
@@ -138,7 +130,6 @@ class DatasetBuilder:
                 continue
             else:
                 bart_label = self.nlp_processor.call_bart_model(ground_truth_source, clean_fact)
-
             if "REMOVE" in bracket_gpt:
                 counter_removed += 1
                 if bart_label != "Entailment":
@@ -151,10 +142,6 @@ class DatasetBuilder:
                     counter_corrected_true += 1
                 else:
                     df_corrections_with_evidence = df_corrections_with_evidence[df_corrections_with_evidence['gen_evidence'] != gen_evidence]
-            #else:
-            #    df_corrections_with_evidence = df_corrections_with_evidence[df_corrections_with_evidence['gen_evidence'] != gen_evidence]
-            #    counter_misleading_generation_true += 1
-
         if build_dataset:
             df_corrections_with_evidence.rename(columns={f"correction_evidence_{self.llm_name}": "correction_evidence"}, inplace=True)
             return df_corrections_with_evidence
@@ -162,24 +149,21 @@ class DatasetBuilder:
             return counter_removed, counter_removed_true, counter_corrected, counter_corrected_true, df_corrections_with_evidence
     
     def balance_remove_corrected(self, df_corrections_with_evidence):
+        """Balances the dataset (3:1) by removing the samples with REMOVE label."""
         corrected_samples = df_corrections_with_evidence['correction_evidence'].str.contains('(Corrected)', regex=False).sum()
         remove_samples = df_corrections_with_evidence['correction_evidence'].str.contains('(REMOVE)', regex=False).sum()
-
         print(f"Initial number of Corrected samples: {corrected_samples}")
         print(f"Initial number of REMOVE samples: {remove_samples}")
-
         grouped = df_corrections_with_evidence.groupby('gen_evidence')
         corrected_groups = []
         remove_groups = []
         for name, group in grouped:
             corrected_count = group['correction_evidence'].str.contains('(Corrected)', regex=False).sum()
             remove_count = group['correction_evidence'].str.contains('(REMOVE)', regex=False).sum()
-
             if corrected_count > remove_count:
                 corrected_groups.append(group)
             else:
                 remove_groups.append(group)
-
         corrected_count = len(corrected_groups)
         remove_needed = min(len(remove_groups), corrected_count // 3)
         remove_sampled = pd.concat(remove_groups).sample(n=remove_needed, random_state=42)
@@ -187,14 +171,14 @@ class DatasetBuilder:
         df_corrections_with_evidence_balanced = df_corrections_with_evidence_balanced.sample(frac=1).reset_index(drop=True)
         corrected_samples = df_corrections_with_evidence_balanced['correction_evidence'].str.contains('(Corrected)', regex=False).sum()
         remove_samples = df_corrections_with_evidence_balanced['correction_evidence'].str.contains('(REMOVE)', regex=False).sum()
-
         print(f"Final Number of Corrected samples: {corrected_samples}")
         print(f"Final Number of REMOVE samples: {remove_samples}")
         return df_corrections_with_evidence_balanced
 
 if __name__ == "__main__":
-    bart_model_path = "D:\huggingface\huggingface\hub\models--facebook--bart-large-mnli\snapshots\d7645e127eaf1aefc7862fd59a17a5aa8558b8ce"
 
+    # insert BART model path
+    bart_model_path = ""
 
     datasets = ["fever", "hover"]
     nlp_processor = NLPProcessor(bart_model_path)
@@ -219,7 +203,6 @@ if __name__ == "__main__":
             df_corrections_with_evidence_balanced.to_pickle(f"train_datasets_{dataset_name}/{file_name}_balanced.pkl")
 
         
-
     if create_combined_dataset:
         if not os.path.exists("train_datasets_combined"):
             os.makedirs("train_datasets_combined")

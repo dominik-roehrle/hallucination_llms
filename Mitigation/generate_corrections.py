@@ -5,15 +5,16 @@ from llm_interaction import LLMInteraction
 
 
 class GenerateCorrections:
+    """ this class generates corrections for false mini facts"""
     def __init__(self, llm_name, llm_interaction, save_corrections_path):
         self.llm_name = llm_name
         self.llm_interaction = llm_interaction
         self.save_corrections_path = save_corrections_path
 
     def group_mini_facts(self, df_mini_facts):
+        """ groups the mini facts by the generated evidence"""
         df_mini_facts_grouped = df_mini_facts.groupby("gen_evidence")
         df_corrections_evidence = pd.DataFrame(columns=["gen_evidence", "ground_truth_source", "mini_facts_with_labels_false"])
-
         for name, group in df_mini_facts_grouped:
             docs = group['docs'].values[0]
             mini_facts_with_labels_true = []
@@ -35,6 +36,7 @@ class GenerateCorrections:
         return df_corrections_evidence
 
     def generate_corrections(self, df_corrections_evidence):
+        """ generates corrections for the false mini facts"""
         df_corrections_evidence_model = pd.DataFrame()
         print(len(df_corrections_evidence))
         for index, row in df_corrections_evidence.iterrows():
@@ -70,6 +72,7 @@ class GenerateCorrections:
 
 if __name__ == "__main__":
     
+    # select the LLM model
     llm_name = "llama_finetuned"
     dataset_name = "fever"
 
@@ -82,7 +85,8 @@ if __name__ == "__main__":
         corrections.generate_corrections(df_corrections_evidence)
 
     elif llm_name == "llama":
-        llama_model_path = r"C:\Users\droeh\.cache\huggingface\hub\models--meta-llama--Meta-Llama-3-8B-Instruct\snapshots\e5e23bbe8e749ef0efcf16cad411a7d23bd23298"
+        # insert the llama model path
+        llama_model_path = ""
         save_corrections_path = f"llama_corrections/corrections_evidence_{dataset_name}_test.pkl"
         
         llama = LLMInteraction(llama_model_path, fine_tuned_version=False, few_shot=True, use_cache=False)
@@ -91,8 +95,8 @@ if __name__ == "__main__":
         corrections.generate_corrections(df_corrections_evidence)
 
     elif llm_name == "llama_finetuned":
-        llama_model_path = "llama_finetuned_model_v2"
-        save_corrections_path = f"llama_finetuned_corrections_v2/corrections_evidence_{dataset_name}_test.pkl"
+        llama_model_path = "llama_finetuned_model"
+        save_corrections_path = f"llama_finetuned_corrections/corrections_evidence_{dataset_name}_test.pkl"
 
         llama = LLMInteraction(llama_model_path, fine_tuned_version=True, few_shot=False, use_cache=False)
         df_corrections_evidence = pd.read_pickle(f"corrections_evidence_for_evaluation/corrections_evidence_{dataset_name}_test.pkl").iloc[:10]

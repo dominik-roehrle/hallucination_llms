@@ -4,12 +4,15 @@ import torch
 import os
 import numpy as np
 
+
 class Embeddings:
+    """ this class generates embeddings for the datasets"""
     def __init__(self, llm, remove_period):
         self.llm = llm
         self.remove_period = remove_period
 
     def load_data(self, input_file, embeddings_name):
+        """ loads the dataset"""
         print(f"Loading dataset from {input_file}")
         try:
             print(f"Loading {input_file}")
@@ -22,6 +25,7 @@ class Embeddings:
         return df
 
     def process_row(self, prompt, layer):
+        """ processes the row of each mini-fact or sentence and generates the embeddings"""
         if self.remove_period:
             prompt = prompt.rstrip(". ")
         inputs = self.llm.tokenizer(prompt, return_tensors="pt").to("cuda")
@@ -34,13 +38,16 @@ class Embeddings:
         return embeddings
 
     def save_data(self, df, output_file):
+        """ saves the dataset with the embeddings"""
         if not os.path.exists(os.path.dirname(output_file)):
             os.makedirs(os.path.dirname(output_file))
         df.to_pickle(output_file)
 
 
 if __name__ == "__main__":
-    model_path = "C:/Users/droeh/.cache/huggingface/hub/models--meta-llama--Meta-Llama-3-8B-Instruct/snapshots/e5e23bbe8e749ef0efcf16cad411a7d23bd23298"
+
+    # Set the model path
+    model_path = ""
     
     llm = LLM(model_path)
     datasets = ["hover", "fever"]

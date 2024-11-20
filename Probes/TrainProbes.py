@@ -13,9 +13,10 @@ import argparse
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, accuracy_score
-from itertools import product  # For hyperparameter combinations
-
+from itertools import product 
 import random
+
+# inspirings from https://github.com/balevinstein/Probes
 
 # Set the seed for reproducibility
 def set_seed(seed_value=42):
@@ -29,6 +30,7 @@ def set_seed(seed_value=42):
 
 
 class ProbeNN(nn.Module):
+    """ Neural network for probing the embeddings """
     def __init__(self, input_dim):
         super(ProbeNN, self).__init__()
         self.layer1 = nn.Linear(input_dim, 256)
@@ -50,16 +52,10 @@ class TrainProbe:
 
         self.df_train = pd.read_pickle(f"{dataset_names[0]}.pkl")
         self.train_embeddings = torch.tensor(self.df_train[f'embeddings{layer}_{probe_method}'].tolist(), dtype=torch.float32).to(self.device)
-        #print(self.train_embeddings.shape)
-        #self.train_embeddings = torch.squeeze(self.train_embeddings, 1)  # Removes extra dimension along axis 1
-        #print(self.train_embeddings.shape)
-        #import sys
-        #sys.exit()
         self.train_labels = torch.tensor(self.df_train[f'label_{probe_method}'].values, dtype=torch.float32).to(self.device)
 
         self.df_dev = pd.read_pickle(f"{dataset_names[1]}.pkl")
         self.dev_embeddings = torch.tensor(self.df_dev[f'embeddings{layer}_{probe_method}'].tolist(), dtype=torch.float32).to(self.device)
-        #self.dev_embeddings = torch.squeeze(self.dev_embeddings, 1)  # Removes extra dimension along axis 1
         self.dev_labels = torch.tensor(self.df_dev[f'label_{probe_method}'].values, dtype=torch.float32).to(self.device)
 
         self.learning_rate = hyperparameters["learning_rate"]
@@ -84,29 +80,24 @@ class TrainProbe:
         dev_losses = []
         early_stopping_triggered = False
 
-        # Initialize early stopping variables
-        best_dev_loss = float('inf')  # Track the lowest dev loss
+    
+        best_dev_loss = float('inf') 
         epochs_no_improve = 0
-        best_epoch = 0  # Track the epoch of the best model
-
-        # Store the best model during training
+        best_epoch = 0  
         best_model_state = None
         for epoch in range(self.epochs):
             self.model.train()
             epoch_loss = 0.0
             for batch_embeddings, batch_labels in self.dataloader:
                 self.optimizer.zero_grad()
-                #print(batch_embeddings.shape)
                 outputs = self.model(batch_embeddings).squeeze()
                 loss = self.criterion(outputs, batch_labels)
                 loss.backward()
                 self.optimizer.step()
                 epoch_loss += loss.item()
 
-            # Average training loss for the epoch
             avg_train_loss = epoch_loss / len(self.dataloader)
             train_losses.append(avg_train_loss)
-            # Evaluate on the dev set
             self.model.eval()
             with torch.no_grad():
                 dev_outputs = self.model(self.dev_embeddings).squeeze()
@@ -115,10 +106,9 @@ class TrainProbe:
 
             print(f"Epoch {epoch+1}/{self.epochs}, Train Loss: {avg_train_loss:.4f}, dev Loss: {dev_loss:.4f}")
 
-            # Check for early stopping based on dev loss
             if dev_loss < best_dev_loss:
                 best_dev_loss = dev_loss
-                best_epoch = epoch + 1  # Save the best epoch (1-indexed)
+                best_epoch = epoch + 1 
                 epochs_no_improve = 0
                 best_model_state = deepcopy(self.model.state_dict())
             else:
@@ -128,7 +118,6 @@ class TrainProbe:
                 print(f"Early stopping triggered after {epoch+1} epochs. Best dev loss was at epoch: {best_epoch}")
                 early_stopping_triggered = True
                 break
-        # Load best model state before returning
         if best_model_state is not None:
             self.model.load_state_dict(best_model_state)
         return self.model, train_losses, dev_losses, best_dev_loss, best_epoch, early_stopping_triggered
@@ -145,8 +134,6 @@ class TrainProbe:
             predicted = (outputs > self.accuracy_threshold).float()
             accuracy = (predicted == self.dev_labels).float().mean().item()
             loss = nn.BCELoss()(outputs, self.dev_labels).item()
-
-            # Get predicted probabilities for AUC-ROC
             predicted_probabilities = outputs.cpu().numpy()
             roc_auc = self.compute_roc_curve(self.dev_labels.cpu().numpy(), predicted_probabilities)
 
@@ -170,8 +157,8 @@ if __name__ == "__main__":
         for layer in layers:
             print(f"Training probes for dataset: {dataset}, layer: {layer}")
             for probe_method in ["mini_fact", "sentence"]:
-                #input_path = f"recreate_processed_datasets_{dataset}_layer{layer}"
-                input_path = f"processed_datasets_with_bart_{dataset}_layer{layer}"
+
+                input_path = f"processed_datasets_llama_{dataset}_layer{layer}"
                 model_output_path = "probes"  
                 probe_dataset_names = [f"{input_path}/{probe_method}_{dataset}_train", f"{input_path}/{probe_method}_{dataset}_dev"]
                 
@@ -196,12 +183,11 @@ if __name__ == "__main__":
                         model, train_losses, dev_losses, best_dev_loss, \
                             best_epoch, early_stopping_triggered = probe.train_model()
 
-                        # Update global best model based on dev loss
                         if best_dev_loss < global_best_dev_loss:
                             global_best_dev_loss = best_dev_loss
                             global_best_model = deepcopy(model)
                             global_best_hyperparams = (batch_size, learning_rate)
-                            global_best_epoch = best_epoch  # Save the best epoch
+                            global_best_epoch = best_epoch  
                             print(f"New global best dev loss: {global_best_dev_loss}")
                         
                 if global_best_model is not None:
@@ -210,7 +196,6 @@ if __name__ == "__main__":
                     print(f"Best hyperparameters - Batch Size: {global_best_hyperparams[0]}, Learning Rate: {global_best_hyperparams[1]}")
                     print(f"Number of epochs for best model: {global_best_epoch}")
 
-                    # Append the best hyperparameters and results to the DataFrame
                     df_hyperparameters = pd.concat([
                         df_hyperparameters if not df_hyperparameters.empty else None,
                         pd.DataFrame([{
@@ -228,7 +213,6 @@ if __name__ == "__main__":
                         }])
                     ], ignore_index=True)
 
-                    # Save the global best model only once per layer and dataset
                     if save_probes:
                         try:
                             if not os.path.exists(model_output_path):
@@ -238,7 +222,7 @@ if __name__ == "__main__":
                             print(f"Model saved to {model_save_name}")
                         except Exception as e:
                             print(f"Error saving the model: {e}")
-    df_hyperparameters.to_csv(f"{model_output_path}/hyperparameters2.csv", index=False)
+    #df_hyperparameters.to_csv(f"{model_output_path}/hyperparameters.csv", index=False)
 
 
                        

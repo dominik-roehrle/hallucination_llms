@@ -22,10 +22,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class OpenAIInteraction:
+    """ this class interacts with the OpenAI API"""
     def __init__(self, maximum_mini_facts_per_evidence):
+
+        # optionally set the maximum number of mini facts per evidence
         self.maximum_mini_facts_per_evidence = 8
 
-        self.mini_facts_instruction = f"""Your task is to breakdown claims/sentences into independant statements (maximum {self.maximum_mini_facts_per_evidence}). 
+        self.mini_facts_instruction = f"""Your task is to breakdown claims/sentences into independant statements. 
 You must NEVER correct or comment the original claims/sentences even if something of the original claims/sentences is incorrect.
 Do NEVER generate statements that are not in the original claims/sentences. Every statement must start with an entity that specifies the topic (e.g. **The Fox Broadcasting Company** and not **The company**)."""
         
@@ -60,6 +63,7 @@ Do not change the sentences except the replacement even if they are not correct.
 
 
     def call_llm(self, messages, response_format):
+        """ calls the OpenAI API"""
         client = OpenAI()
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -77,6 +81,7 @@ Do not change the sentences except the replacement even if they are not correct.
     
 
     def get_prompt_mini_facts(self, gen_evidence):
+        """ generates the prompt for the mini facts"""
         messages = [{"role": "system", 
                 "content" : [{"type": "text", 
                             "text": f"{self.mini_facts_instruction}"}]},
@@ -91,6 +96,7 @@ Do not change the sentences except the replacement even if they are not correct.
     
     
     def get_prompt_labeling(self, mini_facts, ground_truth_source):
+        """ generates the prompt for the labeling of the mini facts"""
         messages = [{"role": "system", 
                     "content" : [{"type": "text", 
                                 "text":  f"{self.labeling_instruction}"}]},
@@ -99,6 +105,7 @@ Do not change the sentences except the replacement even if they are not correct.
     
 
     def get_prompt_replace_pronouns(self, gen_evidence):
+        """ generates the prompt for the replacement of pronouns"""
         messages = [{"role": "system", 
                  "content" : [{"type": "text", 
                                "text": f"{self.replace_pronouns_instruction}"}]},
@@ -111,16 +118,17 @@ Do not change the sentences except the replacement even if they are not correct.
 
 
 class NLPProcessor:
+    """ this class processes the text with the NLP models (sentence split and BART)"""
     def __init__(self, bart_model_path):
         self.nlp = spacy.load("en_core_web_sm")
-        self.nlp.add_pipe(
-            "fastcoref",
-            config={
-                'model_architecture': 'LingMessCoref',
-                'model_path': 'biu-nlp/lingmess-coref',
-                'device': 'cuda'
-            }
-        )
+        #self.nlp.add_pipe(
+        #    "fastcoref",
+        #    config={
+        #        'model_architecture': 'LingMessCoref',
+        #        'model_path': 'biu-nlp/lingmess-coref',
+        #        'device': 'cuda'
+        #    }
+        #)
 
         print("Loading BART model...")
         self.bart_model = AutoModelForSequenceClassification.from_pretrained(bart_model_path, local_files_only=True)
@@ -128,6 +136,7 @@ class NLPProcessor:
         self.bart_model.to(device)
 
     def convert_text_to_sentences(self, text):
+        """ converts the text into sentences with spacy"""
         doc = self.nlp(text)
         sentences = [sent.text for sent in doc.sents]
         return sentences
@@ -150,6 +159,7 @@ class NLPProcessor:
         return text_chunks
     
     def call_bart_model(self, source, statement):
+        """ calls the BART model to predict entailment, contradiction, or neutral"""
         source_chunks = self.split_source_to_fit_with_hypothesis(source, statement, self.bart_tokenizer, max_length=1024)
         entailment_probs = []
         pred_labels = []
@@ -184,6 +194,7 @@ class NLPProcessor:
     
 
 class DatasetBuilder:
+    """ this class builds the dataset with the mini facts and sentences"""
     def __init__(self, dataset_name, openai_interaction, nlp_processor, save_path_mini_facts_and_evidence, 
                  save_path_mini_facts_and_sentences, save_path_mini_facts_and_sentences_bart, save_path_mini_facts_and_evidence_bart,
                  save_path_sentences):
@@ -199,6 +210,7 @@ class DatasetBuilder:
 
 
     def create_mini_facts_and_evidence(self, df_gen_evidence):
+        """ creates the mini facts and evidence dataset"""
         df_mini_facts_and_evidence = pd.DataFrame()
         for index, row in df_gen_evidence.iterrows():
             print(index)
@@ -232,6 +244,7 @@ class DatasetBuilder:
         return df_mini_facts_and_evidence
 
     def create_mini_facts_and_sentences(self, df_mini_facts_and_evidence):
+        """ creates the mini facts and sentences dataset"""
         df_mini_facts_and_sentences = pd.DataFrame()
         df_grouped_evidence = df_mini_facts_and_evidence.groupby("gen_evidence")
 
@@ -265,6 +278,7 @@ class DatasetBuilder:
         return df_mini_facts_and_sentences
 
     def remove_duplicates(self, df_mini_facts_and_sentences):
+        """ removes duplicates from mini-facts and sentence dataset"""
         duplicates = df_mini_facts_and_sentences[df_mini_facts_and_sentences.duplicated(subset='output_mini_fact', keep='first')]
         values_to_remove = duplicates['gen_sentence'].unique()
         df_mini_facts_and_sentences = df_mini_facts_and_sentences[~df_mini_facts_and_sentences['gen_sentence'].isin(values_to_remove)]
@@ -273,6 +287,7 @@ class DatasetBuilder:
         return df_mini_facts_and_sentences
 
     def get_sentences_only(self, df_mini_facts_and_sentences):
+        """ gets the sentences only dataset"""
         def count_false_facts(x):
             return (x == 0).sum()
 
@@ -294,9 +309,8 @@ class DatasetBuilder:
         return aggregated_df
     
     def match_gpt4_with_bart(self, df, remove_sentence_or_gen_evidence):
-
+        """ matches the GPT-4 labels with BART model"""
         df_bart = df.copy()
-
         for index, row in df.iterrows():
             ground_truth_source = row["ground_truth_source"]
             statement = row["output_mini_fact"]
@@ -340,10 +354,9 @@ if __name__ == "__main__":
 
     openai_interaction = OpenAIInteraction(maximum_mini_facts_per_evidence=6)
  
-
-    bart_model_path = "D:\huggingface\huggingface\hub\models--facebook--bart-large-mnli\snapshots\d7645e127eaf1aefc7862fd59a17a5aa8558b8ce"
+    # Set the model path
+    bart_model_path = ""
     nlp_processor = NLPProcessor(bart_model_path=bart_model_path)
-
   
     dataset_builder = DatasetBuilder(dataset_name, openai_interaction, nlp_processor, 
                                      save_path_mini_facts_and_evidence, save_path_mini_facts_and_sentences, 

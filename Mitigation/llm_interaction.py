@@ -16,6 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class LLMInteraction:
+    """ this class interacts with the LLMs"""
     def __init__(self, llama_model_path=None, fine_tuned_version=False, few_shot=False, use_cache=False):
         self.few_shot = few_shot
         if llama_model_path:
@@ -81,6 +82,7 @@ If only a part of a statement is incorrect, correct the incorrect part while kee
 
 
     def call_openai_llm(self, messages, response_format):
+        """ calls the OpenAI LLM"""
         client = OpenAI()
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -97,6 +99,7 @@ If only a part of a statement is incorrect, correct the incorrect part while kee
         return response.choices[0].message.content
     
     def call_llama_llm(self, messages):
+        """ calls the Llama LLM"""
         input_ids = self.llama_tokenizer.apply_chat_template(
             messages,
             add_generation_prompt=True,
@@ -121,6 +124,7 @@ If only a part of a statement is incorrect, correct the incorrect part while kee
     
 
     def correct_mini_facts_prompt(self, mini_facts_with_labels_false, ground_truth_source, correction_evidence=None, is_training=False):
+        """ generates the correction prompt for the LLMs"""
         if self.few_shot:
             messages = [
                 {"role": "system", "content": "Please correct the statements marked as FALSE based only on the provided SOURCE. Do not use information from any other source. If a FALSE statement cannot be corrected because no information from the SOURCE contradicts the statement, output REMOVE. If only a part of a statement is incorrect, correct the incorrect part while keeping the rest of the statement intact. Ensure that every given wrong fact is either corrected (Corrected) or removed (REMOVE) as provided in the examples below."},

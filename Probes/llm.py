@@ -6,6 +6,7 @@ from stoppingCriteria import TokenStoppingCriteria
 transformers.logging.set_verbosity_error()
 
 class LLM:
+    """ this class interacts with the LLMs"""
     def __init__(self, model_path, model_name):
 
         if model_name == "llama":
@@ -26,15 +27,16 @@ class LLM:
                                                 trust_remote_code=True)
             
 
-    def call_text_llm(self, new_prompt):
+    def call_text_llm(self, prompt):
+        """ calls the LLM to get the generated text, tokens, pe, probs"""
         sentinel_token = "###"
-        number_examples = new_prompt.count(sentinel_token)
+        number_examples = prompt.count(sentinel_token)
         sentinel_token_ids = self.tokenizer(sentinel_token, add_special_tokens=False, return_tensors="pt").input_ids.to("cuda")
         stopping_criteria_list = transformers.StoppingCriteriaList([
             TokenStoppingCriteria(sentinel_token_ids=sentinel_token_ids, starting_idx=0, counter=0, stop_counter=number_examples)
         ])
 
-        inputs = self.tokenizer(new_prompt, return_tensors="pt").to("cuda")
+        inputs = self.tokenizer(prompt, return_tensors="pt").to("cuda")
 
         outputs = self.model.generate(
             **inputs,

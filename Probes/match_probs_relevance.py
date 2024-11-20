@@ -13,6 +13,7 @@ logging.set_verbosity_error()
 
 
 class DatasetBuilder:
+    """ this class builds the dataset for the probabilities and token importance"""
     def __init__(self, nlp_processor, vectorizer, gen_evidence_file, sentence_file, model_name):
         self.vectorizer = vectorizer
         self.nlp_processor = nlp_processor 
@@ -21,6 +22,7 @@ class DatasetBuilder:
         self.model_name = model_name
 
     def match_tokens_llama(self, start_index, token_list, sentence):
+        """ matches the tokens with the sentence for llama"""
         sentence_list = sentence.split()
         len_sentence_list = len(sentence_list)
         matched_probs = []
@@ -33,6 +35,7 @@ class DatasetBuilder:
         return start_index + len(matched_probs), matched_probs
     
     def match_tokens_phi(self, start_index, token_list, sentence):
+        """ matches the tokens with the sentence for phi"""
         sentence_list = "".join(sentence)
         len_sentence_list = len(sentence_list)
         matched_probs = []
@@ -47,6 +50,7 @@ class DatasetBuilder:
         return start_index + len(matched_probs), matched_probs
     
     def merge_with_probs(self):
+        """ merges the sentence with the probabilities"""
         df_gen_evidence = pd.read_pickle(self.gen_evidence_file)
         df_gen_evidence.drop_duplicates(subset="gen_evidence", inplace=True)
         df_sentence = pd.read_pickle(self.sentence_file)
@@ -57,6 +61,7 @@ class DatasetBuilder:
         return df_sentence
     
     def concatenate_tokens_with_probs(self, tokens_probs):
+        """ concatenates the tokens with the probabilities"""
         concatenated = []
         current_word = ""
         current_tokens = []  
@@ -81,6 +86,7 @@ class DatasetBuilder:
         return concatenated
     
     def create_probs(self, df_sentence):
+        """ gets the probabilities for the sentences"""
         df_grouped = df_sentence.groupby("gen_evidence")
         df_probs_sentences = pd.DataFrame(columns=["output_sentence", "label_sentence", "gen_evidence", "concat_probs_sentence", "docs"])
 
@@ -138,8 +144,10 @@ class DatasetBuilder:
         df_probs_sentences.reset_index(drop=True, inplace=True)
         return df_probs_sentences
     
-
+    # inspirings from https://github.com/jinhaoduan/SAR 
     def get_token_importance(self, df_probs_sentences, batch_size=32):
+        """ get token importance of the tokens by removing tokens and calculating the similarity"""
+
         df_token_importance = df_probs_sentences.copy()
         df_token_importance['token_importance'] = None
         df_token_importance['token_importance'] = df_token_importance['token_importance'].astype(object)
@@ -155,12 +163,9 @@ class DatasetBuilder:
                 tokens = [item for sublist in tokens for item in sublist]
                 words = [tokens[0] for tokens in concat_probs_sentence]
                 
-
-
             # phi 
             elif self.model_name == "phi":
                 tokens = [tokens[0] for tokens in concat_probs_sentence]
-
 
             token_importance = []
             replaced_sentences = [
@@ -180,7 +185,6 @@ class DatasetBuilder:
 
             token_importance = torch.tensor(token_importance).reshape(-1)
             df_token_importance.at[sample_idx, 'token_importance'] = token_importance.tolist()
-
             print(df_token_importance.at[sample_idx])
         df_token_importance.reset_index(drop=True, inplace=True)
         return df_token_importance
@@ -202,19 +206,22 @@ class NLP:
 
 
     def convert_text_to_sentences(self, text):
+        """ converts the text to sentences"""
         doc = self.nlp(text)
         sentences = [sent.text for sent in doc.sents]
         return sentences
         
 
 if __name__ == "__main__":
-    roberta_model_path = r"D:\huggingface\huggingface\hub\models--cross-encoder--stsb-roberta-large\snapshots\9e35bf01ec28b309411c8903d0d4165567303eb4"
+    # Set the model path
+    roberta_model_path = "" 
     roberta_measure_model = CrossEncoder(model_name=roberta_model_path, num_labels=1)
     vectorizer = TfidfVectorizer()
     nlp_processor = NLP(roberta_model_path, roberta_measure_model)
 
     dataset = "hover"
     model_name = "llama"
+    # we only generate the probs for the test claims
     dataset_builder = DatasetBuilder(nlp_processor, vectorizer, f"test_evidence_with_claims/test_{dataset}_{model_name}.pkl", 
                                      f"datasets_{dataset}_{model_name}/sentence_with_bart_{dataset}.pkl", model_name=model_name)
     

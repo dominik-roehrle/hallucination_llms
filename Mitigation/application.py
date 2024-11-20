@@ -108,6 +108,7 @@ class TokenStoppingCriteria(transformers.StoppingCriteria):
     
 
 def call_text_llm(new_prompt, model, tokenizer):
+    """Calling text LLm to get token details such as pe, probs, tokens."""
     sentinel_token = "###"
     number_examples = new_prompt.count(sentinel_token)
     sentinel_token_ids = tokenizer(sentinel_token, add_special_tokens=False, return_tensors="pt").input_ids.to("cuda")
@@ -151,6 +152,7 @@ def call_text_llm(new_prompt, model, tokenizer):
 
 
 def call_chat_llm(messages, model, tokenizer):
+    """Calling chat LLm to get the response."""
     input_ids = tokenizer.apply_chat_template(
         messages,
         add_generation_prompt=True,
@@ -175,6 +177,7 @@ def call_chat_llm(messages, model, tokenizer):
 
 
 def get_embeddings(prompt, layer):
+    """Get embeddings for the prompt."""
     prompt = prompt.rstrip(". ")
     inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
     with torch.no_grad():
@@ -187,6 +190,7 @@ def get_embeddings(prompt, layer):
 
 
 def correct_mini_facts_prompt(mini_facts_with_labels_false, ground_truth_source):
+    """Instruction Prompt to correct the mini facts."""
     messages = messages = [
         {"role": "system", "content": "Please correct the statements marked as FALSE based only on the provided SOURCE. Do not use information from any other source. If a FALSE statement cannot be corrected because no information from the SOURCE contradicts the statement, output REMOVE. If only a part of a statement is incorrect, correct the incorrect part while keeping the rest of the statement intact. Ensure that every given wrong fact is either corrected (Corrected) or removed (REMOVE) as provided in the examples below."},
         {"role": "user", "content": f"WRONG STATEMENTS: {mini_facts_with_labels_false} \n\n SOURCE: {ground_truth_source}"},
@@ -194,6 +198,7 @@ def correct_mini_facts_prompt(mini_facts_with_labels_false, ground_truth_source)
     return messages
 
 def get_prompt_mini_facts(gen):
+    """Prompt to generate mini facts."""
     mini_facts_instruction = f"""Your task is to breakdown claims/sentences into independant statements. 
 You must NEVER correct or comment the original claims/sentences even if something of the original claims/sentences is incorrect.
 Do NEVER generate statements that are not in the original claims/sentences. Every statement must start with an entity that specifies the topic (e.g. **The Fox Broadcasting Company** and not **The company**)."""
@@ -271,6 +276,7 @@ def generate_sentence_by_sentence(row, prompt, source, model, tokenizer, model_f
     return generation.strip()
 
 def generate_whole_evidence(row, prompt, source, model, tokenizer, model_finetuned, tokenizer_finetuned, probe, layer):
+    """Generates the evidence based on the few-shot prompt and performs correction on the whole evidence."""
     new_prompt = f"{prompt} CLAIM: {row['claim']}"
     response, _ = call_text_llm(new_prompt, model, tokenizer)
     response_clean = response.replace("EVIDENCE: ", "").replace("EVIDENCE_END.", "").replace("###", "")
@@ -301,7 +307,7 @@ def generate_whole_evidence(row, prompt, source, model, tokenizer, model_finetun
     return final_evidence
 
 def generate_baseline_evidence(row, prompt, model, tokenizer):
-    """Generates the evidence based on the initial prompt without any corrections."""
+    """Generates the evidence based on the few-shot prompt without any corrections."""
     new_prompt = f"{prompt} CLAIM: {row['claim']}"
     response, _ = call_text_llm(new_prompt, model, tokenizer)
     response_clean = response.replace("EVIDENCE: ", "").replace("EVIDENCE_END.", "").replace("###", "")
@@ -310,7 +316,9 @@ def generate_baseline_evidence(row, prompt, model, tokenizer):
 
 if __name__ == "__main__":
     model_loader = LlamaModelLoader(
+        # insert the path to the base model
         model_path="/home/wombat_share/llms/llama/Meta-Llama-3-8B-Instruct",
+        # insert the path to the fine-tuned model
         finetuned_model_dir="llama_finetuned_model"
     )
     
@@ -318,16 +326,18 @@ if __name__ == "__main__":
     model_finetuned, tokenizer_finetuned = model_loader.get_finetuned_model()
 
     prompt_sentence_by_sentence = """CLAIM: Alexander Glazunov served as director of the Saint Petersburg Conservatory when he started composing Symphony No 9 in D minor. EVIDENCE: Glazunov's Symphony No. 9 in D minor was begun in 1910, but was still unfinished by the time of Glazunov's death in 1936 .### Alexander Glazunov served as director of the Saint Petersburg Conservatory between 1905 and 1928 and was instrumental in the reorganization of the Saint Petersburg Conservatory into the Petrograd Conservatory, then the Leningrad Conservatory, following the Bolshevik Revolution. EVIDENCE_END .### CLAIM: In regards to Value premium the expert who argued that no value premium exists, did not found The Vanguard Group. EVIDENCE: Other experts, such as John C. Bogle, have argued that no value premium exists, claiming that Fama and French's research is period dependent .### John C. Bogle is the founder and retired chief executive of The Vanguard Group. EVIDENCE_END .### CLAIM: Besides Bamburgh Castle, Lindisfarne Castle is located on the northeast coast of England. EVIDENCE: Fenwick, Northumberland's close proximity to Lindisfarne Castle, Bamburgh Castle and Chillingham Castle means Fenwick, Northumberland is an ideal base from which to explore the rich history of Northumberland and the Farne Islands .### Bamburgh Castle is a castle on the northeast coast of England, by the village of Bamburgh in Northumberland. EVIDENCE_END .### CLAIM: After succeeding minister Arnold Burns, Edwin Meese remained in office from 1985-1988. EVIDENCE: Meese resigned from office later in July 1988, shortly after Arnold Burns and Weld appeared before Congress .### Edwin Meese is an American attorney, law professor, author and member of the Republican Party who served in official capacities within the Ronald Reagan Gubernatorial Administration (1967–1974), the Ronald Reagan Presidential Transition Team (1980) and the Ronald Reagan White House (1981–1985), eventually rising to hold the position of the 75th Attorney General of the United States (1985–1988). EVIDENCE_END .###"""
-    
     prompt_whole_evidence = """CLAIM: Alexander Glazunov served as director of the Saint Petersburg Conservatory when he started composing Symphony No 9 in D minor. EVIDENCE: Glazunov's Symphony No. 9 in D minor was begun in 1910, but was still unfinished by the time of Glazunov's death in 1936.Alexander Glazunov served as director of the Saint Petersburg Conservatory between 1905 and 1928 and was instrumental in the reorganization of the Saint Petersburg Conservatory into the Petrograd Conservatory, then the Leningrad Conservatory, following the Bolshevik Revolution. EVIDENCE_END .### CLAIM: In regards to Value premium the expert who argued that no value premium exists, did not found The Vanguard Group. EVIDENCE: Other experts, such as John C. Bogle, have argued that no value premium exists, claiming that Fama and French's research is period dependent.John C. Bogle is the founder and retired chief executive of The Vanguard Group. EVIDENCE_END .### CLAIM: Besides Bamburgh Castle, Lindisfarne Castle is located on the northeast coast of England. EVIDENCE: Fenwick, Northumberland's close proximity to Lindisfarne Castle, Bamburgh Castle and Chillingham Castle means Fenwick, Northumberland is an ideal base from which to explore the rich history of Northumberland and the Farne Islands. Bamburgh Castle is a castle on the northeast coast of England, by the village of Bamburgh in Northumberland. EVIDENCE_END .### CLAIM: After succeeding minister Arnold Burns, Edwin Meese remained in office from 1985-1988. EVIDENCE: Meese resigned from office later in July 1988, shortly after Arnold Burns and Weld appeared before Congress. Edwin Meese is an American attorney, law professor, author and member of the Republican Party who served in official capacities within the Ronald Reagan Gubernatorial Administration (1967–1974), the Ronald Reagan Presidential Transition Team (1980) and the Ronald Reagan White House (1981–1985), eventually rising to hold the position of the 75th Attorney General of the United States (1985–1988). EVIDENCE_END .###"""
     
+    # Load the test data
     df_test = pd.read_pickle("application/application_data.pkl").reset_index(drop=True)
     print(len(df_test))
     layer = -16
     probe = ProbeNN(4096)
-    probe.load_state_dict(torch.load(f"mini_fact_embeddings{layer}_hover.pth"))
+    # Load the probe model
+    probe.load_state_dict(torch.load(f"../Porbes/processed_datasets_llama_layer-16/mini_fact_embeddings{layer}_hover.pth"))
     probe.eval()
 
+    # select the application scenario (whole_evidence, sentence_by_sentence, baseline)
     application = "whole_evidence"
 
     df_results = pd.DataFrame()
