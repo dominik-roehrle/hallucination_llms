@@ -5,9 +5,10 @@ Mitigation Techniques for Claim-Based Verification
 To downlaod LLMs create an account on https://huggingface.co/
 Maybe the access to Llama has to be requested first: https://huggingface.co/meta-llama and https://llama.meta.com/llama-downloads
 
-To install pytorch go to https://pytorch.org/ and follow the instructions
+To install pytorch go to https://pytorch.org/ and follow the instructions (2.3.0+cu118)
 then install the other packages with: pip install -r requirements.txt
-Note: for windows the library bitsandbytes does not work -> go to: https://github.com/d8ahazard/sd_dreambooth_extension/issues/7): 
+Note: for windows the library bitsandbytes does not work -> go to: 
+https://github.com/d8ahazard/sd_dreambooth_extension/issues/7 
 and type pip install https://github.com/jllllll/bitsandbytes-windows-webui/releases/download/wheels/bitsandbytes-0.41.1-py3-none-win_amd64.whl 
 
 The repository is divided into three parts: 
