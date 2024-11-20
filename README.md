@@ -15,7 +15,10 @@ The repository is divided into three parts:
 - Entity Analysis
 
 # Probes:
-## To recreate the dataset for the probes go to Probes/ and run: 
+## To recreate the dataset for the probes go to Probes/
+
+- download https://1drv.ms/u/s!AhVn8Lx_iIapipk3hFU1JRpMosF--g?e=llFsno (raw FEVER and HoVer datasets)
+
 - python generate_evidence.py 
 (creates evidence text from HoVer and FEVER with an LLM)
 
@@ -42,9 +45,7 @@ The repository is divided into three parts:
 
 ## To run the evaluation for the baselines
 - download https://1drv.ms/u/s!AhVn8Lx_iIapipk2ydzSyocV3ZZhJg?e=YLcEo7 (make sure the folders are insides Probes/)
-
-## to get the generated evidence, the test claims and the FEVER and HoVer raw database
-- download https://1drv.ms/u/s!AhVn8Lx_iIapipk3hFU1JRpMosF--g?e=llFsno 
+- go to evaluate_probs.ipynb
 
 
 # Finetuning 
