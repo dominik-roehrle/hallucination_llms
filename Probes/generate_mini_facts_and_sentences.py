@@ -14,7 +14,7 @@ import torch
 # Suppress transformer logging
 logging.set_verbosity_error()
 
-with open("api.key", "r") as file:
+with open("../api.key", "r") as file:
     api_key = file.read().strip() 
 
 os.environ["OPENAI_API_KEY"] = api_key

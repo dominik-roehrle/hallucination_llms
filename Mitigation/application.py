@@ -334,7 +334,7 @@ if __name__ == "__main__":
     layer = -16
     probe = ProbeNN(4096)
     # Load the probe model
-    probe.load_state_dict(torch.load(f"../Porbes/processed_datasets_llama_layer-16/mini_fact_embeddings{layer}_hover.pth"))
+    probe.load_state_dict(torch.load(f"../Probes/processed_datasets_llama_layer-16/mini_fact_embeddings{layer}_hover.pth"))
     probe.eval()
 
     # select the application scenario (whole_evidence, sentence_by_sentence, baseline)

@@ -49,7 +49,7 @@ The repository is divided into three parts:
 
 
 # Finetuning 
-## To recreate the dataset for finetuning go to Mitigation/ and run:
+## To recreate the dataset for finetuning go to Mitigation/:
 - download https://1drv.ms/f/s!AhVn8Lx_iIapipk6-VBvpNUn3pPbIw?e=NpvXF6 
 (these are the labelled mini-facts with their associated evidence, make sure the folder is inside Mitigation/)
 
@@ -94,16 +94,15 @@ The repository is divided into three parts:
 - run results.ipynb if you want to plot the probability distributions
 
 
-## to get the aleady created dataset
+## to get the already created dataset
 - download https://1drv.ms/u/s!AhVn8Lx_iIapiplROt5adNLKBiQ-xw?e=a6TfhQ 
 
 
 
 Note: Some coding was conducted with the help of Github Copilot, 
-inspirings ...
-... for finetuning was taken from https://www.kaggle.com/code/zivicmilos/llm-finetuning,
-... for token sar from https://github.com/jinhaoduan/SAR 
-... for the probes from https://github.com/balevinstein/Probes
+inspirings for finetuning was taken from https://www.kaggle.com/code/zivicmilos/llm-finetuning, 
+for token sar from https://github.com/jinhaoduan/SAR,  
+for the probes from https://github.com/balevinstein/Probes
 
 
 
