@@ -256,20 +256,19 @@ if __name__ == "__main__":
     
     # insert the model path and name
     model_path = ""
-    model_name = "phi"
+    model_name = "llama"
 
     llm = LLM(model_path, model_name=model_name)
 
     fever_files = {
-        "few_shot": "datasets_fever/fever_claim_evidence_few_shot.jsonl",
-        "claim_evidence": "test_evidence_with_claims/test_fever.pkl"
-        #"claim_evidence": "datasets_fever/fever_claim_evidence_generate.jsonl"
+        "few_shot": "datasets_llama_fever/fever_claim_evidence_few_shot.jsonl",
+        "claim_evidence": "datasets_llama_fever/fever_claim_evidence_generate.jsonl"
     }
     fever_generator = FeverEvidenceGenerator(llm, fever_files, number_few_shot=5, number_claim_evidence=1, model_name=model_name, only_test_claims=True)
     df_generated_evidence = fever_generator.run_fever()
-    #if not os.path.exists("recreate_datasets_fever"):
-    #    os.makedirs("recreate_datasets_fever")
-    #df_generated_evidence.to_pickle("recreate_datasets_fever/gen_evidence_fever.pkl")
+    #if not os.path.exists("recreate_datasets_llama_fever"):
+    #    os.makedirs("recreate_datasets_llama_fever")
+    #df_generated_evidence.to_pickle("recreate_datasets_llama_fever/gen_evidence_fever.pkl")
 
 
     # if only test claims are used
@@ -279,16 +278,16 @@ if __name__ == "__main__":
         'few_shot': 'datasets_hover/hover_claim_evidence_few_shot.json',
         'claim_evidence1_file': 'test_evidence_with_claims/test_hover.pkl',
         'claim_evidence2_file': None
-        #'claim_evidence1_file': 'datasets_hover/hover_claim_evidence_generate1.json',
-        #'claim_evidence2_file': 'datasets_hover/hover_claim_evidence_generate2.json'
+        #'claim_evidence1_file': 'datasets_llama_hover/hover_claim_evidence_generate1.json',
+        #'claim_evidence2_file': 'datasets_llama_hover/hover_claim_evidence_generate2.json'
     }
     """
 
     db_path = 'datasets_llama_hover/wiki_wo_links.db'
     hover_files = {
         'few_shot': 'datasets_hover/hover_claim_evidence_few_shot.json',
-        'claim_evidence1_file': 'datasets_hover/hover_claim_evidence_generate1.json',
-        'claim_evidence2_file': 'datasets_hover/hover_claim_evidence_generate2.json'
+        'claim_evidence1_file': 'datasets_llama_hover/hover_claim_evidence_generate1.json',
+        'claim_evidence2_file': 'datasets_llama_hover/hover_claim_evidence_generate2.json'
     }
 
 
@@ -297,9 +296,9 @@ if __name__ == "__main__":
 
     hover_generator = HoverEvidenceGenerator(llm, db_path, hover_files, number_few_shot=4, max_number_claim_evidence=1, model_name=model_name, only_test_claims=False)
     df_generated_evidence_hops3 = hover_generator.run_hover_hops_3()
-    #if not os.path.exists("recreate_datasets_hover"):
-    #    os.makedirs("recreate_datasets_hover")
-    #df_generated_evidence.to_pickle("recreate_datasets_hover/gen_evidence_hover.pkl")
+    #if not os.path.exists("recreate_datasets_llama_hover"):
+    #    os.makedirs("recreate_datasets_llama_hover")
+    #df_generated_evidence.to_pickle("recreate_datasets_llama_hover/gen_evidence_hover.pkl")
    
 
 

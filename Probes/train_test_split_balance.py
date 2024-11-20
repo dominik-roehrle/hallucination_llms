@@ -197,7 +197,7 @@ if __name__ == "__main__":
 
     for layer in layers:
         rng = np.random.RandomState(42)
-        dataset_folder = f"processed_datasets_with_bart_{dataset}_layer{layer}"
+        dataset_folder = f"processed_datasets_llama_{dataset}_layer{layer}"
         sentence_dataset_name = f"sentence_{dataset}"
         mini_fact_dataset_name = f"mini_fact_{dataset}"
         

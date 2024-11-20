@@ -15,9 +15,9 @@ The repository is divided into three parts:
 - Entity Analysis
 
 # Probes:
-## To recreate the dataset for the probes go to Probes/
+## To create the dataset for the probes go to Probes/
 
-- download https://1drv.ms/u/s!AhVn8Lx_iIapipk3hFU1JRpMosF--g?e=llFsno (raw FEVER and HoVer datasets)
+- download https://1drv.ms/u/s!AhVn8Lx_iIapipk3hFU1JRpMosF--g?e=llFsno (raw FEVER and HoVer datasets + already generated files)
 
 - python generate_evidence.py 
 (creates evidence text from HoVer and FEVER with an LLM)
@@ -51,7 +51,7 @@ The repository is divided into three parts:
 # Finetuning 
 ## To recreate the dataset for finetuning go to Mitigation/:
 - download https://1drv.ms/f/s!AhVn8Lx_iIapipk6-VBvpNUn3pPbIw?e=NpvXF6 
-(these are the labelled mini-facts with their associated evidence, make sure the folder is inside Mitigation/)
+(these are the labelled mini-facts with their associated evidence, make sure the files are inside Mitigation/)
 
 - python generate_corrections.py 
 (pre-generation of corrections with OpenAI)

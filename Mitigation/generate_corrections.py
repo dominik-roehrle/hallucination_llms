@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     if llm_name == "openai":
         openai = LLMInteraction(fine_tuned_version=False, few_shot=True, use_cache=False) 
-        df_mini_facts = pd.read_pickle(f"mini_facts_labeled/mini_facts_{dataset_name}_gen_evidence.pkl")
+        df_mini_facts = pd.read_pickle(f"mini_facts_{dataset_name}_gen_evidence.pkl")
         save_corrections_path = f"recreate_openai_corrections_{dataset_name}/corrections_evidence_{dataset_name}.pkl"
         corrections = GenerateCorrections(llm_name, openai, save_corrections_path)
         df_corrections_evidence = corrections.group_mini_facts(df_mini_facts)
