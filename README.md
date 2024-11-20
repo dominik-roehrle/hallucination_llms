@@ -25,7 +25,7 @@ The repository is divided into three parts:
 - python generate_embeddings.py 
 (generates the embeddings of mini-facts and sentences)
 
-- python train_test_split_balance
+- python train_test_split_balance.py
 (splits the datasets and balances them)
 
 - python TrainProbes.py
