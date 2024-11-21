@@ -2,10 +2,12 @@ This is the repository for the research:
 Addressing Hallucination in Large Language Models: Detection and
 Mitigation Techniques for Claim-Based Verification
 
-To downlaod LLMs create an account on https://huggingface.co/
+To download LLMs create an account on https://huggingface.co/
 Maybe the access to Llama has to be requested first: https://huggingface.co/meta-llama and https://llama.meta.com/llama-downloads
+Also the BART-Large-MNLI model has to be downloaded: https://huggingface.co/facebook/bart-large-mnli
 
-To install pytorch go to https://pytorch.org/ and follow the instructions (2.3.0+cu118)
+
+To install pytorch go to https://pytorch.org/ and follow the instructions (2.5.1 cu118)
 then install the other packages with: pip install -r requirements.txt
 Note: for windows the library bitsandbytes does not work so remove it from requirements.txt first and -> go to: 
 https://github.com/d8ahazard/sd_dreambooth_extension/issues/7 
